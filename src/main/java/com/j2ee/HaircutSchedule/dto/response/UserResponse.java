@@ -2,15 +2,17 @@ package com.j2ee.HaircutSchedule.dto.response;
 
 import com.j2ee.HaircutSchedule.enums.UserRole;
 import lombok.Builder;
-import lombok.Data;
 
-@Data
+import java.time.OffsetDateTime;
+
 @Builder
-public class UserResponse {
-    private Long id;
-    private String username;
-    private String fullName;
-    private String email;
-    private String phone;
-    private UserRole role;
+public record UserResponse(
+        Integer id,
+        String fullName,
+        String email,
+        String phone,
+        UserRole role,
+        boolean isActive,
+        OffsetDateTime createdAt
+) {
 }

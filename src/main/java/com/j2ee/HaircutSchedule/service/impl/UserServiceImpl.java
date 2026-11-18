@@ -20,12 +20,17 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<UserResponse> getAllUsers() {
-        List<User> users = userRepository.findAll();
-        if(users.isEmpty())
-            throw new ResourceNotFoundException("No users found in the system");
-
-        return users.stream()
-                .map(userMapper::toUserResponse)
+        return userRepository.findAll()
+                .stream()
+                .map(userMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public UserResponse getUserById(Integer id) {
+
+        return userRepository.findById(id)
+                .map(userMapper::toResponse)
+                .orElse(null);
     }
 }

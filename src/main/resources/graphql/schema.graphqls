@@ -1,0 +1,160 @@
+# =========================================================
+# SCALARS
+# =========================================================
+
+scalar Date
+scalar LocalTime
+scalar DateTime
+scalar BigDecimal
+
+
+# =========================================================
+# ENUMS
+# =========================================================
+
+enum UserRole {
+    ADMIN
+    CUSTOMER
+    BARBER
+}
+
+enum BookingStatus {
+    PENDING
+    CONFIRMED
+    COMPLETED
+    CANCELLED
+}
+
+
+# =========================================================
+# QUERY
+# =========================================================
+
+type Query {
+
+    # Users
+    users: [User!]!
+
+    user(id: ID!): User
+
+
+    # Services
+    services(activeOnly: Boolean = false): [Service!]!
+
+
+    # Barber schedules
+    barberSchedules(
+        barberId: ID!
+        dateOfWeek: Int
+    ): [BarberSchedule!]!
+
+
+    # Bookings
+    bookings: [Booking!]!
+}
+
+
+# =========================================================
+# USER
+# =========================================================
+
+type User {
+
+    id: ID!
+
+    fullName: String!
+
+    email: String!
+
+    phone: String!
+
+    role: UserRole!
+
+    isActive: Boolean!
+
+    createdAt: DateTime!
+}
+
+
+# =========================================================
+# SERVICE
+# =========================================================
+
+type Service {
+
+    id: ID!
+
+    name: String!
+
+    description: String
+
+    price: BigDecimal!
+
+    durationMinutes: Int!
+
+    isActive: Boolean!
+}
+
+
+# =========================================================
+# BARBER SCHEDULE
+# =========================================================
+
+type BarberSchedule {
+
+    id: ID!
+
+    barberId: ID!
+
+    dateOfWeek: Int!
+
+    startTime: LocalTime!
+
+    endTime: LocalTime!
+
+    isOff: Boolean!
+}
+
+
+# =========================================================
+# BOOKING
+# =========================================================
+
+type Booking {
+
+    id: ID!
+
+    customerId: ID!
+
+    barberId: ID!
+
+    bookingDate: Date!
+
+    startTime: LocalTime!
+
+    endTime: LocalTime!
+
+    totalPrice: BigDecimal!
+
+    status: BookingStatus!
+
+    createdAt: DateTime!
+
+    services: [BookingService!]!
+}
+
+
+# =========================================================
+# BOOKING SERVICE
+# =========================================================
+
+type BookingService {
+
+    id: ID!
+
+    serviceId: ID!
+
+    serviceName: String!
+
+    priceAtBooking: BigDecimal!
+}
