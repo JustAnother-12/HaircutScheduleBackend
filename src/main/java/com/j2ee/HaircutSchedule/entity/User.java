@@ -26,7 +26,7 @@ public class User {
     @Column(nullable = false, unique = true, length = 255)
     private String email;
 
-    @Column(name = "hashed_password", nullable = false, length = 255)
+    @Column(name = "hashed_password", length = 255)
     private String hashedPassword;
 
     @Convert(converter = UserRoleConverter.class)
@@ -34,7 +34,7 @@ public class User {
     @Builder.Default
     private UserRole role = UserRole.CUSTOMER;
 
-    @Column(nullable = false, unique = true, length = 20)
+    @Column(unique = true, length = 20)
     private String phone;
 
     @Column(name = "is_active", nullable = false)

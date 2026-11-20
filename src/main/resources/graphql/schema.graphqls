@@ -1,17 +1,10 @@
-# =========================================================
 # SCALARS
-# =========================================================
-
 scalar Date
 scalar LocalTime
 scalar DateTime
 scalar BigDecimal
 
-
-# =========================================================
 # ENUMS
-# =========================================================
-
 enum UserRole {
     ADMIN
     CUSTOMER
@@ -25,11 +18,7 @@ enum BookingStatus {
     CANCELLED
 }
 
-
-# =========================================================
 # QUERY
-# =========================================================
-
 type Query {
 
     # Users
@@ -53,11 +42,7 @@ type Query {
     bookings: [Booking!]!
 }
 
-
-# =========================================================
 # USER
-# =========================================================
-
 type User {
 
     id: ID!
@@ -75,11 +60,7 @@ type User {
     createdAt: DateTime!
 }
 
-
-# =========================================================
 # SERVICE
-# =========================================================
-
 type Service {
 
     id: ID!
@@ -95,11 +76,7 @@ type Service {
     isActive: Boolean!
 }
 
-
-# =========================================================
 # BARBER SCHEDULE
-# =========================================================
-
 type BarberSchedule {
 
     id: ID!
@@ -115,11 +92,7 @@ type BarberSchedule {
     isOff: Boolean!
 }
 
-
-# =========================================================
 # BOOKING
-# =========================================================
-
 type Booking {
 
     id: ID!
@@ -143,11 +116,7 @@ type Booking {
     services: [BookingService!]!
 }
 
-
-# =========================================================
 # BOOKING SERVICE
-# =========================================================
-
 type BookingService {
 
     id: ID!
@@ -157,4 +126,35 @@ type BookingService {
     serviceName: String!
 
     priceAtBooking: BigDecimal!
+}
+
+# AUTH
+type AuthResponse {
+    accessToken: String!
+    refreshToken: String!
+    accessExpiresAt: DateTime!
+    refreshExpiresAt: DateTime!
+    tokenType: String!
+}
+
+
+# MUTATIONS
+type Mutation {
+
+    login(
+        email: String!
+        password: String!
+    ): AuthResponse!
+
+    refreshToken(
+        refreshToken: String!
+    ): AuthResponse!
+
+    logout(
+        refreshToken: String!
+    ): Boolean!
+
+    exchangeSocialLogin(
+        code: String!
+    ): AuthResponse!
 }
