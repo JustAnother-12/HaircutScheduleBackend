@@ -1,5 +1,6 @@
 package com.j2ee.HaircutSchedule.service.impl;
 
+import com.j2ee.HaircutSchedule.dto.response.PageResponse;
 import com.j2ee.HaircutSchedule.dto.response.ServiceResponse;
 import com.j2ee.HaircutSchedule.exception.ResourceNotFoundException;
 import com.j2ee.HaircutSchedule.mapper.ServiceMapper;
@@ -10,15 +11,16 @@ import java.util.List;
 import java.util.Optional;
 
 import com.j2ee.HaircutSchedule.service.ServiceService;
+import com.j2ee.HaircutSchedule.util.PageUtils;
 import com.j2ee.HaircutSchedule.util.ValidationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.graphql.data.ArgumentValue;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import static com.j2ee.HaircutSchedule.util.Helpers.validateArgumentStringNotBlankOrNull;
-
 
 @Service
 @RequiredArgsConstructor
@@ -27,18 +29,51 @@ public class ServiceServiceImpl implements ServiceService {
     private final ServiceMapper serviceMapper;
 
     @Override
-    public List<ServiceResponse> getAllServices(boolean activeOnly) {
-        List<com.j2ee.HaircutSchedule.entity.Service> services;
+    @Transactional(readOnly = true)
+    public PageResponse<ServiceResponse> getPublicServices(
+            Integer page,
+            Integer limit,
+            String name,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Integer minDurationMinutes,
+            Integer maxDurationMinutes
+    ) {
+        return searchServices(
+                page,
+                limit,
+                name,
+                minPrice,
+                maxPrice,
+                minDurationMinutes,
+                maxDurationMinutes,
+                true
+        );
+    }
 
-        if (activeOnly) {
-            services = serviceRepository.findByIsActiveTrueOrderByNameAsc();
-        } else {
-            services = serviceRepository.findAllByOrderByNameAsc();
-        }
-
-        return services.stream()
-                .map(serviceMapper::toResponse)
-                .toList();
+    @Override
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public PageResponse<ServiceResponse> getAdminServices(
+            Integer page,
+            Integer limit,
+            String name,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Integer minDurationMinutes,
+            Integer maxDurationMinutes,
+            Boolean isActive
+    ) {
+        return searchServices(
+                page,
+                limit,
+                name,
+                minPrice,
+                maxPrice,
+                minDurationMinutes,
+                maxDurationMinutes,
+                isActive
+        );
     }
 
     @Override
@@ -146,5 +181,134 @@ public class ServiceServiceImpl implements ServiceService {
         }
 
         return serviceMapper.toResponse(service);
+    }
+
+    private PageResponse<ServiceResponse> searchServices(
+            Integer page,
+            Integer limit,
+            String name,
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Integer minDurationMinutes,
+            Integer maxDurationMinutes,
+            Boolean isActive
+    ) {
+        validateServiceFilters(
+                minPrice,
+                maxPrice,
+                minDurationMinutes,
+                maxDurationMinutes
+        );
+
+        Specification<com.j2ee.HaircutSchedule.entity.Service> spec =
+                (root, query, cb) -> cb.conjunction();
+
+        if (isActive != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("isActive"), isActive)
+            );
+        }
+
+        String namePattern = PageUtils.containsIgnoreCase(name);
+
+        if (namePattern != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.like(
+                            cb.lower(root.get("name")),
+                            namePattern
+                    )
+            );
+        }
+
+        if (minPrice != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(
+                            root.<BigDecimal>get("price"),
+                            minPrice
+                    )
+            );
+        }
+
+        if (maxPrice != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(
+                            root.<BigDecimal>get("price"),
+                            maxPrice
+                    )
+            );
+        }
+
+        if (minDurationMinutes != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.greaterThanOrEqualTo(
+                            root.<Integer>get("durationMinutes"),
+                            minDurationMinutes
+                    )
+            );
+        }
+
+        if (maxDurationMinutes != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.lessThanOrEqualTo(
+                            root.<Integer>get("durationMinutes"),
+                            maxDurationMinutes
+                    )
+            );
+        }
+
+        Page<com.j2ee.HaircutSchedule.entity.Service> result =
+                serviceRepository.findAll(
+                        spec,
+                        PageUtils.pageable(
+                                page,
+                                limit,
+                                Sort.by(
+                                        Sort.Order.asc("name"),
+                                        Sort.Order.asc("id")
+                                )
+                        )
+                );
+
+        return PageResponse.from(result, serviceMapper::toResponse);
+    }
+
+    private void validateServiceFilters(
+            BigDecimal minPrice,
+            BigDecimal maxPrice,
+            Integer minDuration,
+            Integer maxDuration
+    ) {
+        if (minPrice != null && minPrice.signum() < 0) {
+            throw new IllegalArgumentException(
+                    "minPrice cannot be negative"
+            );
+        }
+        if (maxPrice != null && maxPrice.signum() < 0) {
+            throw new IllegalArgumentException(
+                    "maxPrice cannot be negative"
+            );
+        }
+        if (minPrice != null && maxPrice != null
+                && minPrice.compareTo(maxPrice) > 0) {
+            throw new IllegalArgumentException(
+                    "minPrice cannot be greater than maxPrice"
+            );
+        }
+        if (minDuration != null && minDuration <= 0) {
+            throw new IllegalArgumentException(
+                    "minDurationMinutes must be greater than zero"
+            );
+        }
+        if (maxDuration != null && maxDuration <= 0) {
+            throw new IllegalArgumentException(
+                    "maxDurationMinutes must be greater than zero"
+            );
+        }
+        if (minDuration != null && maxDuration != null
+                && minDuration > maxDuration) {
+            throw new IllegalArgumentException(
+                    "minDurationMinutes cannot exceed maxDurationMinutes"
+            );
+        }
     }
 }

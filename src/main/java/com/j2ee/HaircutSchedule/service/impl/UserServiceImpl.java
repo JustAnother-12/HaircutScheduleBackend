@@ -1,32 +1,42 @@
 package com.j2ee.HaircutSchedule.service.impl;
 
 
+import com.j2ee.HaircutSchedule.dto.response.PageResponse;
 import com.j2ee.HaircutSchedule.dto.response.UserResponse;
 import com.j2ee.HaircutSchedule.entity.User;
 import com.j2ee.HaircutSchedule.enums.UserRole;
+import com.j2ee.HaircutSchedule.event.PasswordChangedEvent;
 import com.j2ee.HaircutSchedule.exception.ResourceAlreadyExistedException;
 import com.j2ee.HaircutSchedule.exception.ResourceNotFoundException;
 import com.j2ee.HaircutSchedule.mapper.UserMapper;
+import com.j2ee.HaircutSchedule.repository.SessionRepository;
 import com.j2ee.HaircutSchedule.repository.UserRepository;
 import com.j2ee.HaircutSchedule.service.UserService;
+import com.j2ee.HaircutSchedule.util.PageUtils;
 import com.j2ee.HaircutSchedule.util.ValidationUtils;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.graphql.data.ArgumentValue;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
-import static com.j2ee.HaircutSchedule.util.Helpers.validateArgumentStringNotBlankOrNull;
+import java.time.Clock;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final SessionRepository sessionRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final ApplicationEventPublisher eventPublisher;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -80,7 +90,7 @@ public class UserServiceImpl implements UserService {
             user.setPhone(validPhone);
         }
 
-        return userMapper.toResponse(currentUser);
+        return userMapper.toResponse(user);
     }
 
     @Override
@@ -127,6 +137,20 @@ public class UserServiceImpl implements UserService {
                 passwordEncoder.encode(newValue)
         );
 
+        Instant now = clock.instant();
+
+        sessionRepository.findAllByUserAndRevokedAtIsNull(user)
+                .forEach(session ->
+                        session.setRevokedAt(now)
+                );
+
+        eventPublisher.publishEvent(
+                new PasswordChangedEvent(
+                        user.getEmail(),
+                        user.getFullName()
+                )
+        );
+
         return true;
     }
 
@@ -136,26 +160,70 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll()
-                .stream()
-                .map(userMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public PageResponse<UserResponse> getUsers(
+            Integer page,
+            Integer limit,
+            String fullName,
+            String email,
+            String phone,
+            UserRole role
+    ) {
+        return searchUsers(
+                page,
+                limit,
+                fullName,
+                email,
+                phone,
+                role,
+                null,
+                false
+        );
     }
 
     @Override
-    public List<UserResponse> getAllBarbers() {
-        return userRepository.findAllByRole(UserRole.BARBER)
-                .stream()
-                .map(userMapper::toResponse)
-                .toList();
+    @Transactional(readOnly = true)
+    public PageResponse<UserResponse> getBarbers(
+            Integer page,
+            Integer limit,
+            String fullName,
+            String email,
+            String phone,
+            Boolean isActive
+    ) {
+        return searchUsers(
+                page,
+                limit,
+                fullName,
+                email,
+                phone,
+                null,
+                isActive,
+                true
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public UserResponse getBarberById(Integer barberId) {
+        User barber = userRepository.findByIdAndRole(
+                barberId,
+                UserRole.BARBER
+        ).orElseThrow(() ->
+                new ResourceNotFoundException(
+                        "Cannot find barber with id: " + barberId
+                )
+        );
+
+        return userMapper.toResponse(barber);
     }
 
     @Override
     public UserResponse getUserById(Integer id) {
         return userRepository.findById(id)
                 .map(userMapper::toResponse)
-                .orElse(null);
+                .orElseThrow(() -> new ResourceNotFoundException("Cannot find User with id: " + id));
     }
 
     @Override
@@ -216,13 +284,38 @@ public class UserServiceImpl implements UserService {
             changed = true;
         }
 
-        if (ValidationUtils.isProvided(email)){
-            user.setEmail(ValidationUtils.requireEmail(email.value()));
+        if (ValidationUtils.isProvided(email)) {
+            String validEmail = ValidationUtils.requireEmail(email.value());
+
+            boolean emailUsed = userRepository
+                    .findByEmailIgnoreCase(validEmail)
+                    .filter(existing -> !existing.getId().equals(user.getId()))
+                    .isPresent();
+
+            if (emailUsed) {
+                throw new ResourceAlreadyExistedException(
+                        "Email already exists"
+                );
+            }
+
+            user.setEmail(validEmail);
             changed = true;
         }
 
-        if (ValidationUtils.isProvided(phone)){
-            user.setPhone(ValidationUtils.requirePhone(phone.value()));
+        if (ValidationUtils.isProvided(phone)) {
+            String validPhone = ValidationUtils.requirePhone(phone.value());
+
+            boolean phoneUsed = userRepository.findByPhone(validPhone)
+                    .filter(existing -> !existing.getId().equals(user.getId()))
+                    .isPresent();
+
+            if (phoneUsed) {
+                throw new ResourceAlreadyExistedException(
+                        "Phone already exists"
+                );
+            }
+
+            user.setPhone(validPhone);
             changed = true;
         }
 
@@ -242,5 +335,84 @@ public class UserServiceImpl implements UserService {
 
 
         return userMapper.toResponse(user);
+    }
+
+    private PageResponse<UserResponse> searchUsers(
+            Integer page,
+            Integer limit,
+            String fullName,
+            String email,
+            String phone,
+            UserRole role,
+            Boolean isActive,
+            boolean barberOnly
+    ) {
+        Specification<User> spec = (root, query, cb) ->
+                cb.conjunction();
+
+        UserRole effectiveRole = barberOnly
+                ? UserRole.BARBER
+                : role;
+
+        if (effectiveRole != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("role"), effectiveRole)
+            );
+        }
+
+        String namePattern = PageUtils.containsIgnoreCase(fullName);
+
+        if (namePattern != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.like(
+                            cb.lower(root.get("fullName")),
+                            namePattern
+                    )
+            );
+        }
+
+        String normalizedEmail =
+                PageUtils.normalizeExactFilter(email);
+
+        if (normalizedEmail != null) {
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(
+                            cb.lower(root.get("email")),
+                            normalizedEmail
+                    )
+            );
+        }
+
+        if (phone != null && !phone.isBlank()) {
+            String normalizedPhone = phone.trim();
+
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("phone"), normalizedPhone)
+            );
+        }
+
+        if (isActive == null) {
+            isActive = true;
+        }
+
+        Boolean finalIsActive = isActive;
+        spec = spec.and((root, query, cb) ->
+                cb.equal(root.get("isActive"), finalIsActive)
+        );
+
+
+        Page<User> result = userRepository.findAll(
+                spec,
+                PageUtils.pageable(
+                        page,
+                        limit,
+                        Sort.by(
+                                Sort.Order.asc("fullName"),
+                                Sort.Order.asc("id")
+                        )
+                )
+        );
+
+        return PageResponse.from(result, userMapper::toResponse);
     }
 }

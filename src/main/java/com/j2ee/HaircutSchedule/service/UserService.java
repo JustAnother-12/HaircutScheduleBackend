@@ -1,5 +1,6 @@
 package com.j2ee.HaircutSchedule.service;
 
+import com.j2ee.HaircutSchedule.dto.response.PageResponse;
 import com.j2ee.HaircutSchedule.dto.response.UserResponse;
 import com.j2ee.HaircutSchedule.entity.User;
 import com.j2ee.HaircutSchedule.enums.UserRole;
@@ -23,9 +24,25 @@ public interface UserService {
 
     UserResponse getCurrentUser(User currentUser);
 
-    List<UserResponse> getAllUsers();
+    PageResponse<UserResponse> getUsers(
+            Integer page,
+            Integer limit,
+            String fullName,
+            String email,
+            String phone,
+            UserRole role
+    );
 
-    List<UserResponse> getAllBarbers();
+    PageResponse<UserResponse> getBarbers(
+            Integer page,
+            Integer limit,
+            String fullName,
+            String email,
+            String phone,
+            Boolean isActive
+    );
+
+    UserResponse getBarberById(Integer barberId);
 
     UserResponse getUserById(Integer id);
 

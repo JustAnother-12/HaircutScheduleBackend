@@ -18,118 +18,198 @@ enum BookingStatus {
     CANCELLED
 }
 
-# QUERY
-type Query {
+input UpdateProfileInput {
+    fullName: String
+    email: String
+    phone: String
+}
 
-    # Users
-    users: [User!]!
+input UpdatePasswordInput {
+    oldPassword: String!
+    newPassword: String!
+}
 
-    user(id: ID!): User
+input CreateServiceInput {
+    name: String!
+    description: String
+    price: BigDecimal!
+    durationMinutes: Int!
+}
 
+input UpdateServiceInput {
+    name: String
+    description: String
+    price: BigDecimal
+    durationMinutes: Int
+    isActive: Boolean
+}
 
-    # Services
-    services(activeOnly: Boolean = false): [Service!]!
+input CreateBarberScheduleInput {
+    dateOfWeek: Int!
+    startTime: LocalTime!
+    endTime: LocalTime!
+    isOff: Boolean = false
+}
 
+input UpdateBarberScheduleInput {
+    dateOfWeek: Int
+    startTime: LocalTime
+    endTime: LocalTime
+    isOff: Boolean
+}
 
-    # Barber schedules
-    barberSchedules(
-        barberId: ID!
-        dateOfWeek: Int
-    ): [BarberSchedule!]!
+input CreateBookingInput {
+    barberId: ID!
+    bookingDate: Date!
+    startTime: LocalTime!
+    serviceIds: [Int!]!
+}
 
+input RescheduleBookingInput {
+    bookingDate: Date
+    startTime: LocalTime
+}
 
-    # Bookings
-    bookings: [Booking!]!
+input UpdateUserInput {
+    fullName: String
+    email: String
+    phone: String
+    role: UserRole
+}
+
+# PAGINATION
+type PageInfo {
+    total: Int!
+    page: Int!
+    limit: Int!
+    pages: Int!
+}
+
+type UserPage {
+    items: [User!]!
+    pageInfo: PageInfo!
+}
+
+type ServicePage {
+    items: [Service!]!
+    pageInfo: PageInfo!
+}
+
+type AdminServicePage {
+    items: [AdminService!]!
+    pageInfo: PageInfo!
+}
+
+type BarberSchedulePage {
+    items: [BarberSchedule!]!
+    pageInfo: PageInfo!
+}
+
+type BookingPage {
+    items: [Booking!]!
+    pageInfo: PageInfo!
 }
 
 # USER
 type User {
-
     id: ID!
-
     fullName: String!
-
     email: String!
-
     phone: String
-
     role: UserRole!
-
     isActive: Boolean!
-
     createdAt: DateTime!
 }
 
 # SERVICE
 type Service {
-
     id: ID!
-
     name: String!
-
     description: String
-
     price: BigDecimal!
-
     durationMinutes: Int!
+}
 
+type AdminService {
+    id: ID!
+    name: String!
+    description: String
+    price: BigDecimal!
+    durationMinutes: Int!
     isActive: Boolean!
 }
 
 # BARBER SCHEDULE
 type BarberSchedule {
-
     id: ID!
-
     barberId: ID!
-
     dateOfWeek: Int!
-
     startTime: LocalTime!
-
     endTime: LocalTime!
-
     isOff: Boolean!
+}
+
+type AvailableSlot {
+    bookingDate: Date!
+    slotDurationMinutes: Int!
+    availableSlots: [TimeSlot]
+}
+
+type TimeSlot {
+    startTime: LocalTime!
+    endTime: LocalTime!
 }
 
 # BOOKING
 type Booking {
-
     id: ID!
-
     customerId: ID!
-
     barberId: ID!
-
     bookingDate: Date!
-
     startTime: LocalTime!
-
     endTime: LocalTime!
-
     totalPrice: BigDecimal!
-
     status: BookingStatus!
-
     createdAt: DateTime!
-
     services: [BookingService!]!
 }
 
 # BOOKING SERVICE
 type BookingService {
-
     id: ID!
-
     serviceId: ID!
-
     serviceName: String!
-
     priceAtBooking: BigDecimal!
 }
 
+# SESSION
+type Session {
+    id: ID!
+    createdAt: DateTime!
+    lastActivityAt: DateTime!
+    expiredAt: DateTime!
+    revokedAt: DateTime
+}
+
 # AUTH
+input RegisterInput {
+    fullName: String!
+    email: String!
+    phone: String!
+    password: String!
+}
+
+type RegistrationResult {
+    message: String!
+    email: String!
+}
+
+type MessageResponse {
+    message: String!
+}
+
 type AuthResponse {
+    email: String!
     accessToken: String!
     refreshToken: String!
     accessExpiresAt: DateTime!
@@ -140,28 +220,167 @@ type AuthResponse {
 
 # MUTATIONS
 type Mutation {
+    # Auth
+    register(input: RegisterInput!): RegistrationResult!
 
-    register(
-        fullName: String!
-        email: String!
-        phone: String!
-        password: String!
-    ): AuthResponse!
+    confirmRegistration(token: String!): AuthResponse!
 
     login(
         email: String!
         password: String!
     ): AuthResponse!
 
-    refreshToken(
-        refreshToken: String!
-    ): AuthResponse!
+    requestPasswordReset(
+        email: String!
+    ): MessageResponse!
 
-    logout(
-        refreshToken: String!
+    resetPassword(
+        token: String!
+        newPassword: String!
     ): Boolean!
 
-    exchangeSocialLogin(
-        code: String!
-    ): AuthResponse!
+    refreshToken(refreshToken: String!): AuthResponse!
+
+    logout(refreshToken: String!): Boolean!
+
+    exchangeSocialLogin(code: String!): AuthResponse!
+
+    activeDevices: [Session!]!
+
+    # User
+    updateMyProfile(input: UpdateProfileInput!): User!
+
+    updateMyPassword(input: UpdatePasswordInput!): Boolean!
+
+    createUser(
+        fullName: String!
+        email: String!
+        phone: String!
+        password: String!
+        role: UserRole!
+    ): User!
+
+    updateUser(
+        id: ID!
+        input: UpdateUserInput!
+    ): User!
+
+    # Service
+    createService(input: CreateServiceInput!): AdminService!
+
+    updateService(
+        id: ID!
+        input: UpdateServiceInput!
+    ): AdminService!
+
+    # Barber schedule
+    createBarberSchedule(
+        barberId: ID!
+        input: CreateBarberScheduleInput!
+    ): BarberSchedule!
+
+    updateBarberSchedule(
+        barberId: ID!
+        scheduleId: ID!
+        input: UpdateBarberScheduleInput!
+    ): BarberSchedule!
+
+    deleteBarberSchedule(
+        barberId: ID!
+        scheduleId: ID!
+    ): Boolean!
+
+    # Booking
+    createBooking(input: CreateBookingInput!): Booking!
+
+    cancelBooking(bookingId: ID!): Booking!
+
+    rescheduleBooking(
+        bookingId: ID!
+        input: RescheduleBookingInput!
+    ): Booking!
+
+    updateBookingStatus(
+        bookingId: ID!
+        status: BookingStatus!
+    ): Booking!
+}
+
+# QUERY
+type Query {
+    me: User!
+
+    users(
+        page: Int = 1
+        limit: Int = 10
+        fullName: String
+        email: String
+        phone: String
+        role: UserRole
+    ): UserPage!
+
+    user(id: ID!): User
+
+    barber(id: ID!): User
+
+    barbers(
+        page: Int = 1
+        limit: Int = 10
+        fullName: String
+        email: String
+        phone: String
+        isActive: Boolean
+    ): UserPage!
+
+    services(
+        page: Int = 1
+        limit: Int = 10
+        name: String
+        minPrice: BigDecimal
+        maxPrice: BigDecimal
+        minDurationMinutes: Int
+        maxDurationMinutes: Int
+    ): ServicePage!
+
+    service(id: ID!): Service
+
+    adminServices(
+        page: Int = 1
+        limit: Int = 10
+        name: String
+        minPrice: BigDecimal
+        maxPrice: BigDecimal
+        minDurationMinutes: Int
+        maxDurationMinutes: Int
+        isActive: Boolean
+    ): AdminServicePage!
+
+    adminService(id: ID!): AdminService
+
+    barberSchedules(
+        barberId: ID!
+        page: Int = 1
+        limit: Int = 10
+        dateOfWeek: Int
+        isOff: Boolean
+    ): BarberSchedulePage!
+
+    availableSlots(
+        barberId: ID!
+        bookingDate: Date!
+        slotDurationMinutes: Int = 30
+    ): AvailableSlot!
+
+    bookings(
+        page: Int = 1
+        limit: Int = 10
+        bookingDate: Date
+        status: BookingStatus
+        barberId: ID
+        customerId: ID
+    ): BookingPage!
+
+    booking(id: ID!): Booking
+
+    logoutAll: Boolean!
 }

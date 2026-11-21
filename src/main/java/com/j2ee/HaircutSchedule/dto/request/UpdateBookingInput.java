@@ -9,7 +9,6 @@ import java.time.LocalTime;
 
 public record UpdateBookingInput(
         ArgumentValue<LocalDate> bookingDate,
-        ArgumentValue<LocalTime> startTime,
-        ArgumentValue<BookingStatus> status
+        ArgumentValue<LocalTime> startTime
 ) {
 }

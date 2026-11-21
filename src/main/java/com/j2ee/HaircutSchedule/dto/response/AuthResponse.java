@@ -14,6 +14,7 @@ import java.time.LocalDateTime;
         "tokenType"
 })
 public record AuthResponse(
+        String email,
         String accessToken,
         String refreshToken,
         LocalDateTime accessExpiresAt,

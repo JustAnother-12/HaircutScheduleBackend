@@ -1,7 +1,5 @@
 package com.j2ee.HaircutSchedule.util;
 
-import org.springframework.graphql.data.ArgumentValue;
-
 public class Helpers {
     public static Integer parseId(String id) {
 
@@ -16,14 +14,6 @@ public class Helpers {
         } catch (NumberFormatException ex) {
             throw new IllegalArgumentException(
                     "Invalid ID: " + id
-            );
-        }
-    }
-
-    public static void validateArgumentStringNotBlankOrNull(String argument, String message){
-        if (argument == null || argument.isBlank()) {
-            throw new IllegalArgumentException(
-                    message + " cannot be blank"
             );
         }
     }

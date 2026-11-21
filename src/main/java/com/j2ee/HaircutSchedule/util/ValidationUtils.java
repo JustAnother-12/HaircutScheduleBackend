@@ -4,6 +4,7 @@ import org.springframework.graphql.data.ArgumentValue;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.Locale;
 import java.util.regex.Pattern;
 
 public final class ValidationUtils {
@@ -75,8 +76,8 @@ public final class ValidationUtils {
     }
 
     public static String requireEmail(String value) {
-        String email = requireText(value, "Email", 1, 320)
-                .toLowerCase();
+        String email = requireText(value, "Email", 1, 255)
+                .toLowerCase(Locale.ROOT);
 
         if (!EMAIL_PATTERN.matcher(email).matches()) {
             throw new IllegalArgumentException("Invalid email format");

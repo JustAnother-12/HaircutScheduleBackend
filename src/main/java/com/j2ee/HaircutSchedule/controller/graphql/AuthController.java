@@ -1,6 +1,9 @@
 package com.j2ee.HaircutSchedule.controller.graphql;
 
+import com.j2ee.HaircutSchedule.dto.request.RegisterInput;
 import com.j2ee.HaircutSchedule.dto.response.AuthResponse;
+import com.j2ee.HaircutSchedule.dto.response.MessageResponse;
+import com.j2ee.HaircutSchedule.dto.response.RegistrationResult;
 import com.j2ee.HaircutSchedule.service.AuthService;
 import com.j2ee.HaircutSchedule.service.OAuthLoginTicketService;
 import lombok.RequiredArgsConstructor;
@@ -15,13 +18,40 @@ public class AuthController {
     private final OAuthLoginTicketService ticketService;
 
     @MutationMapping
-    public AuthResponse register(
-            @Argument String fullName,
-            @Argument String email,
-            @Argument String phone,
-            @Argument String password
-    ){
-        return authService.register(fullName, email, phone, password);
+    public RegistrationResult register(
+            @Argument RegisterInput input
+    ) {
+        return authService.register(
+                input.fullName(),
+                input.email(),
+                input.phone(),
+                input.password()
+        );
+    }
+
+    @MutationMapping
+    public AuthResponse confirmRegistration(
+            @Argument String token
+    ) {
+        return authService.confirmRegistration(token);
+    }
+
+    @MutationMapping
+    public MessageResponse requestPasswordReset(
+            @Argument String email
+    ) {
+        return authService.requestPasswordReset(email);
+    }
+
+    @MutationMapping
+    public Boolean resetPassword(
+            @Argument String token,
+            @Argument String newPassword
+    ) {
+        return authService.resetPassword(
+                token,
+                newPassword
+        );
     }
 
     @MutationMapping

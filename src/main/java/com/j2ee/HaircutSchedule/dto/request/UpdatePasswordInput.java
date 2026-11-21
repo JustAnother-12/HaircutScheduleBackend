@@ -4,6 +4,6 @@ import org.springframework.graphql.data.ArgumentValue;
 
 public record UpdatePasswordInput(
         ArgumentValue<String> oldPassword,
-        ArgumentValue<String> password
+        ArgumentValue<String> newPassword
 ) {
 }
