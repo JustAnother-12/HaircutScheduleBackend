@@ -51,7 +51,7 @@ type User {
 
     email: String!
 
-    phone: String!
+    phone: String
 
     role: UserRole!
 
@@ -140,6 +140,13 @@ type AuthResponse {
 
 # MUTATIONS
 type Mutation {
+
+    register(
+        fullName: String!
+        email: String!
+        phone: String!
+        password: String!
+    ): AuthResponse!
 
     login(
         email: String!

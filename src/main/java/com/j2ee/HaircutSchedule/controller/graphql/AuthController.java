@@ -15,6 +15,16 @@ public class AuthController {
     private final OAuthLoginTicketService ticketService;
 
     @MutationMapping
+    public AuthResponse register(
+            @Argument String fullName,
+            @Argument String email,
+            @Argument String phone,
+            @Argument String password
+    ){
+        return authService.register(fullName, email, phone, password);
+    }
+
+    @MutationMapping
     public AuthResponse login(
             @Argument String email,
             @Argument String password

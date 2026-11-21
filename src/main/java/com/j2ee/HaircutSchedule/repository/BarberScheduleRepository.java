@@ -16,4 +16,10 @@ public interface BarberScheduleRepository extends JpaRepository<BarberSchedule, 
             Integer barberId,
             Integer dateOfWeek
     );
+
+    List<BarberSchedule> findByBarber_IdAndDateOfWeekAndIsOffOrderByStartTimeAsc(
+            Integer barberId,
+            Integer dateOfWeek,
+            boolean isOff
+    );
 }

@@ -5,12 +5,18 @@ import com.j2ee.HaircutSchedule.entity.Session;
 import com.j2ee.HaircutSchedule.entity.User;
 
 public interface AuthService {
-    public AuthResponse login(
+    AuthResponse register(
+            String fullName,
+            String email,
+            String phone,
+            String password
+    );
+    AuthResponse login(
             String email,
             String password
     );
-    public AuthResponse loginWithUser(User user);
-    public void logout(String refreshToken);
-    public AuthResponse refreshToken(String refreshToken);
-    public Session createSession(User user, String tokenHash);
+    AuthResponse loginWithUser(User user);
+    void logout(String refreshToken);
+    AuthResponse refreshToken(String refreshToken);
+    Session createSession(User user, String tokenHash);
 }

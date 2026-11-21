@@ -3,19 +3,24 @@ package com.j2ee.HaircutSchedule.service.impl;
 import com.j2ee.HaircutSchedule.dto.response.AuthResponse;
 import com.j2ee.HaircutSchedule.entity.Session;
 import com.j2ee.HaircutSchedule.entity.User;
+import com.j2ee.HaircutSchedule.enums.UserRole;
 import com.j2ee.HaircutSchedule.exception.InvalidOrExpiredTokenException;
+import com.j2ee.HaircutSchedule.exception.ResourceAlreadyExistedException;
 import com.j2ee.HaircutSchedule.exception.ResourceNotFoundException;
 import com.j2ee.HaircutSchedule.repository.SessionRepository;
+import com.j2ee.HaircutSchedule.repository.UserRepository;
 import com.j2ee.HaircutSchedule.security.CustomUserDetails;
 import com.j2ee.HaircutSchedule.security.JwtUtil;
 import com.j2ee.HaircutSchedule.security.TokenHasher;
 import com.j2ee.HaircutSchedule.service.AuthService;
+import com.j2ee.HaircutSchedule.util.ValidationUtils;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.Clock;
@@ -29,25 +34,57 @@ import java.time.LocalDateTime;
 public class AuthServiceImpl implements AuthService {
     private final SessionRepository sessionRepository;
     private final AuthenticationManager authenticationManager;
+    private final PasswordEncoder passwordEncoder;
+    private final UserRepository userRepository;
     private final JwtUtil tokenProvider;
     private final TokenHasher tokenHasher;
     private final Clock clock;
 
     @Override
+    public AuthResponse register(
+            String fullName,
+            String email,
+            String phone,
+            String password
+    ) {
+        String validName = ValidationUtils.requireFullName(fullName);
+        String validEmail = ValidationUtils.requireEmail(email);
+        String validPhone = ValidationUtils.requirePhone(phone);
+        String validPassword = ValidationUtils.requirePassword(password);
+
+        if(userRepository.findByEmail(email).isPresent() || userRepository.findByPhone(phone).isPresent()){
+            throw new ResourceAlreadyExistedException("Email or Phone already existed");
+        }
+
+        User newUser = User.builder()
+                .fullName(validName)
+                .email(validEmail)
+                .phone(validPhone)
+                .role(UserRole.CUSTOMER)
+                .hashedPassword(passwordEncoder.encode(validPassword))
+                .isActive(true)
+                .build();
+
+        User savedUser = userRepository.save(newUser);
+
+        return createTokenPairAndResponse(savedUser);
+    }
+
+    @Override
     public AuthResponse login(
-            String username,
+            String email,
             String password
     ) {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                        username,
+                        email,
                         password
                 )
         );
 
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
 
-        return createTokenPair(userDetails.getUser());
+        return createTokenPairAndResponse(userDetails.getUser());
     }
 
     @Override
@@ -60,7 +97,7 @@ public class AuthServiceImpl implements AuthService {
             throw new IllegalStateException("This account has been disabled");
         }
 
-        return createTokenPair(user);
+        return createTokenPairAndResponse(user);
     }
 
     @Override
@@ -120,13 +157,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public Session createSession(User user, String refreshToken) {
+        Instant now = clock.instant();
         String hashedRefreshToken  = tokenHasher.hashToken(refreshToken);
         Session session = Session.builder()
                 .user(user)
                 .refreshTokenHash(hashedRefreshToken)
-                .createdAt(Instant.now())
-                .lastActivityAt(Instant.now())
-                .expiredAt(Instant.now().plusMillis(Duration.ofDays(tokenProvider.jwtRefreshExpirationDays).toMillis()))
+                .createdAt(now)
+                .lastActivityAt(now)
+                .expiredAt(now.plus(Duration.ofDays(tokenProvider.jwtRefreshExpirationDays)))
                 .revokedAt(null)
                 .build();
 
@@ -134,7 +172,7 @@ public class AuthServiceImpl implements AuthService {
         return session;
     }
 
-    private AuthResponse createTokenPair(User user){
+    private AuthResponse createTokenPairAndResponse(User user){
         String accessToken = tokenProvider.generateAccessToken(user.getEmail());
         String refreshToken = tokenProvider.generateRefreshToken(user.getEmail());
 

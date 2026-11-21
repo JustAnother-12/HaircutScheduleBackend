@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-import static com.j2ee.HaircutSchedule.util.helpers.parseId;
+import static com.j2ee.HaircutSchedule.util.Helpers.parseId;
 
 @Controller
 @RequiredArgsConstructor
