@@ -21,7 +21,6 @@ import static com.j2ee.HaircutSchedule.util.Helpers.parseId;
 
 @Controller
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class ServiceController {
     private final ServiceService serviceService;
 

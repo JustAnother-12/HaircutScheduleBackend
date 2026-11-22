@@ -116,6 +116,8 @@ public class BarberScheduleServiceImpl implements BarberScheduleService {
             LocalTime endTime,
             Boolean isOff
     ) {
+        assertCanAccessBarber(currentUser, barberId);
+
         if (currentUser.getRole().equals(UserRole.BARBER) && !currentUser.getId().equals(barberId))
             throw new IllegalArgumentException(
                     "Barber can only create their own schedules"
@@ -153,6 +155,8 @@ public class BarberScheduleServiceImpl implements BarberScheduleService {
             ArgumentValue<LocalTime> endTime,
             ArgumentValue<Boolean> isOff
     ) {
+        assertCanAccessBarber(currentUser, barberId);
+
         if (currentUser.getRole().equals(UserRole.BARBER) && !currentUser.getId().equals(barberId))
             throw new IllegalArgumentException(
                     "Barber can only update their own schedules"
@@ -175,17 +179,31 @@ public class BarberScheduleServiceImpl implements BarberScheduleService {
             changed = true;
         }
 
-        LocalTime effectiveStart = ValidationUtils.isProvided(startTime)
-                ? startTime.value()
-                : schedule.getStartTime();
+        if (ValidationUtils.isProvided(startTime)) {
+            if (startTime.value() == null) {
+                throw new IllegalArgumentException(
+                        "Start time cannot be null"
+                );
+            }
 
-        LocalTime effectiveEnd = ValidationUtils.isProvided(endTime)
-                ? endTime.value()
-                : schedule.getEndTime();
+            schedule.setStartTime(startTime.value());
+            changed = true;
+        }
+
+        if (ValidationUtils.isProvided(endTime)) {
+            if (endTime.value() == null) {
+                throw new IllegalArgumentException(
+                        "End time cannot be null"
+                );
+            }
+
+            schedule.setEndTime(endTime.value());
+            changed = true;
+        }
 
         ValidationUtils.requireValidTimeRange(
-                effectiveStart,
-                effectiveEnd
+                schedule.getStartTime(),
+                schedule.getEndTime()
         );
 
         if (!changed) {
@@ -204,6 +222,8 @@ public class BarberScheduleServiceImpl implements BarberScheduleService {
             Integer barberId,
             Integer scheduleId
     ) {
+        assertCanAccessBarber(currentUser, barberId);
+
         if (currentUser.getRole().equals(UserRole.BARBER) && !currentUser.getId().equals(barberId))
             throw new IllegalArgumentException(
                     "Barber can only delete their own schedules"

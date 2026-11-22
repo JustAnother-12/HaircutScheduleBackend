@@ -4,12 +4,20 @@ import com.j2ee.HaircutSchedule.dto.request.RegisterInput;
 import com.j2ee.HaircutSchedule.dto.response.AuthResponse;
 import com.j2ee.HaircutSchedule.dto.response.MessageResponse;
 import com.j2ee.HaircutSchedule.dto.response.RegistrationResult;
+import com.j2ee.HaircutSchedule.dto.response.SessionResponse;
+import com.j2ee.HaircutSchedule.entity.Session;
+import com.j2ee.HaircutSchedule.security.CustomUserDetails;
 import com.j2ee.HaircutSchedule.service.AuthService;
 import com.j2ee.HaircutSchedule.service.OAuthLoginTicketService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
+import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
+
+import java.util.List;
 
 @Controller
 @RequiredArgsConstructor
@@ -82,5 +90,22 @@ public class AuthController {
             @Argument String code
     ){
         return ticketService.consume(code);
+    }
+
+    @MutationMapping
+    @PreAuthorize("isAuthenticated()")
+    public Boolean logoutAll(
+            @AuthenticationPrincipal CustomUserDetails principal
+    ){
+        authService.logoutAll(principal.getUser());
+        return true;
+    }
+
+    @QueryMapping
+    @PreAuthorize("isAuthenticated()")
+    public List<SessionResponse> activeDevices(
+            @AuthenticationPrincipal CustomUserDetails principal
+    ){
+        return authService.getActiveDevices(principal.getUser());
     }
 }

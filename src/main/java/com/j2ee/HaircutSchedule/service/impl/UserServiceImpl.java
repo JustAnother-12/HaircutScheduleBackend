@@ -391,15 +391,12 @@ public class UserServiceImpl implements UserService {
             );
         }
 
-        if (isActive == null) {
-            isActive = true;
+        if (isActive != null) {
+
+            spec = spec.and((root, query, cb) ->
+                    cb.equal(root.get("isActive"), isActive)
+            );
         }
-
-        Boolean finalIsActive = isActive;
-        spec = spec.and((root, query, cb) ->
-                cb.equal(root.get("isActive"), finalIsActive)
-        );
-
 
         Page<User> result = userRepository.findAll(
                 spec,

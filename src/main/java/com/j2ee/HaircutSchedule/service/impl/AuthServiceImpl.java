@@ -36,10 +36,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Clock;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.util.List;
 
 @Slf4j
@@ -196,7 +193,7 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(
                         () -> new ResourceNotFoundException("No active session found for the provided refresh token")
                 );
-        session.setRevokedAt(Instant.now());
+        session.setRevokedAt(clock.instant());
         sessionRepository.saveAndFlush(session);
     }
 
@@ -227,12 +224,13 @@ public class AuthServiceImpl implements AuthService {
             String newRefreshToken = tokenProvider.generateRefreshToken(email);
 
             // revoke the old session
-            session.setRevokedAt(Instant.now());
+            session.setRevokedAt(clock.instant());
             sessionRepository.saveAndFlush(session);
 
             createSession(session.getUser(), newRefreshToken);
 
             return AuthResponse.builder()
+                    .email(email)
                     .accessToken(newAccessToken)
                     .refreshToken(newRefreshToken)
                     .accessExpiresAt(LocalDateTime.now().plusHours(tokenProvider.jwtAccessExpirationHours))
@@ -353,11 +351,21 @@ public class AuthServiceImpl implements AuthService {
 
         createSession(user, refreshToken);
 
+        Instant now = clock.instant();
         return AuthResponse.builder()
+                .email(user.getEmail())
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
-                .accessExpiresAt(LocalDateTime.now().plusHours(tokenProvider.jwtAccessExpirationHours))
-                .refreshExpiresAt(LocalDateTime.now().plusDays(tokenProvider.jwtRefreshExpirationDays))
+                .accessExpiresAt(
+                        now.plus(Duration.ofHours(
+                                tokenProvider.jwtAccessExpirationHours
+                        )).atOffset(ZoneOffset.UTC).toLocalDateTime()
+                )
+                .refreshExpiresAt(
+                        now.plus(Duration.ofDays(
+                                tokenProvider.jwtRefreshExpirationDays
+                        )).atOffset(ZoneOffset.UTC).toLocalDateTime()
+                )
                 .tokenType("Bearer")
                 .build();
     }

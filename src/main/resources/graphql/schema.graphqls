@@ -245,7 +245,7 @@ type Mutation {
 
     exchangeSocialLogin(code: String!): AuthResponse!
 
-    activeDevices: [Session!]!
+    logoutAll: Boolean!
 
     # User
     updateMyProfile(input: UpdateProfileInput!): User!
@@ -382,5 +382,5 @@ type Query {
 
     booking(id: ID!): Booking
 
-    logoutAll: Boolean!
+    activeDevices: [Session!]!
 }

@@ -1,7 +1,7 @@
 package com.j2ee.HaircutSchedule.controller.graphql;
 
 import com.j2ee.HaircutSchedule.dto.request.CreateBookingInput;
-import com.j2ee.HaircutSchedule.dto.request.UpdateBookingInput;
+import com.j2ee.HaircutSchedule.dto.request.RescheduleBookingInput;
 import com.j2ee.HaircutSchedule.dto.response.BookingResponse;
 import com.j2ee.HaircutSchedule.dto.response.PageResponse;
 import com.j2ee.HaircutSchedule.enums.BookingStatus;
@@ -14,11 +14,8 @@ import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
 
 import static com.j2ee.HaircutSchedule.util.Helpers.parseId;
 
@@ -64,13 +61,12 @@ public class BookingController {
     @MutationMapping
     @PreAuthorize("hasAuthority('CUSTOMER')")
     public BookingResponse createBooking(
-            @Argument String barberId,
             @Argument CreateBookingInput input,
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         return bookingService.createBooking(
                 principal.getUser(),
-                parseId(barberId),
+                parseId(input.barberId()),
                 input.bookingDate(),
                 input.startTime(),
                 input.serviceIds()
@@ -83,10 +79,9 @@ public class BookingController {
             @Argument String bookingId,
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
-        return bookingService.updateBookingStatus(
+        return bookingService.cancelBooking(
                 principal.getUser(),
-                parseId(bookingId),
-                BookingStatus.CANCELLED
+                parseId(bookingId)
         );
     }
 
@@ -94,7 +89,7 @@ public class BookingController {
     @PreAuthorize("isAuthenticated()")
     public BookingResponse rescheduleBooking(
             @Argument String bookingId,
-            @Argument UpdateBookingInput input,
+            @Argument RescheduleBookingInput input,
             @AuthenticationPrincipal CustomUserDetails principal
     ) {
         return bookingService.updateBookingSchedule(

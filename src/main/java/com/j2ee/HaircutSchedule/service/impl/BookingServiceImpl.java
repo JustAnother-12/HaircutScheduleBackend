@@ -154,6 +154,7 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public BookingResponse getBookingById(
             User currentUser,
             Integer id
@@ -270,14 +271,35 @@ public class BookingServiceImpl implements BookingService {
             Integer bookingId,
             BookingStatus status
     ) {
+        if(status == null)
+            throw new IllegalArgumentException("Status cannot be null");
+
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot find booking with id: " + bookingId));
 
         assertCanUpdateBookingStatus(currentUser, booking);
 
-        if (booking.getStatus().equals(BookingStatus.COMPLETED) && status.equals(BookingStatus.CANCELLED)) {
+        booking.setStatus(status);
+
+        return bookingMapper.toResponse(booking);
+    }
+
+    @Override
+    @Transactional
+    public BookingResponse cancelBooking(
+            User currentUser,
+            Integer bookingId
+    ) {
+
+        Booking booking = bookingRepository.findById(bookingId)
+                .orElseThrow(() -> new ResourceNotFoundException("Cannot find booking with id: " + bookingId));
+
+        assertCanAccessBooking(currentUser, booking);
+
+        if (booking.getStatus() == BookingStatus.COMPLETED
+                || booking.getStatus() == BookingStatus.CANCELLED) {
             throw new IllegalArgumentException(
-                    "Completed booking cannot be cancelled"
+                    "This booking cannot be cancelled"
             );
         }
 
@@ -478,6 +500,14 @@ public class BookingServiceImpl implements BookingService {
             User currentUser,
             Booking booking
     ) {
+        boolean isImmutable= booking.getStatus().equals(BookingStatus.COMPLETED) || booking.getStatus().equals(BookingStatus.CANCELLED);
+
+        if (isImmutable) {
+            throw new IllegalArgumentException(
+                    "Booking was completed or cancelled"
+            );
+        }
+
         if (currentUser.getRole() == UserRole.ADMIN) {
             return;
         }

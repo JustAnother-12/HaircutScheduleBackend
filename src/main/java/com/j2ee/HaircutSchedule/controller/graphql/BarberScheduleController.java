@@ -23,7 +23,6 @@ import static com.j2ee.HaircutSchedule.util.Helpers.parseId;
 
 @Controller
 @RequiredArgsConstructor
-@Transactional(readOnly = true)
 public class BarberScheduleController {
     private final BarberScheduleService barberScheduleService;
 

@@ -31,6 +31,10 @@ public interface BookingService {
             LocalTime startTime,
             List<Integer> serviceIds
     );
+    BookingResponse cancelBooking(
+            User currentUser,
+            Integer bookingId
+    );
     BookingResponse updateBookingStatus(
             User currentUser,
             Integer bookingId,
