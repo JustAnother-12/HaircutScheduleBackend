@@ -41,29 +41,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try{
             String jwt = getJwtFromRequest(request);
 
-            if (StringUtils.hasText(jwt) && tokenProvider.validateToken(jwt)) {
-                Claims claims = tokenProvider.getAllClaimsFromToken(jwt);
+            if (StringUtils.hasText(jwt)) {
+                if (!tokenProvider.validateToken(jwt)) {
+                    SecurityContextHolder.clearContext();
+                } else {
+                    Claims claims = tokenProvider.getAllClaimsFromToken(jwt);
 
-                String tokenType = claims.get("token_type", String.class);
-                if ("ACCESS".equals(tokenType)) {
-                    String email = tokenProvider.getEmailFromJWT(jwt);
-                    UserDetails userDetails = userDetailsService.loadUserByUsername(email);
+                    String tokenType = claims.get("token_type", String.class);
 
-                    UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(
-                                    userDetails,
-                                    null,
-                                    userDetails.getAuthorities()
-                            );
+                    if ("ACCESS".equals(tokenType)) {
+                        String email = tokenProvider.getEmailFromJWT(jwt);
 
-                    authentication.setDetails(
-                            new WebAuthenticationDetailsSource().buildDetails(request)
-                    );
+                        UserDetails userDetails = userDetailsService.loadUserByUsername(email);
 
-                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                        UsernamePasswordAuthenticationToken authentication =
+                                new UsernamePasswordAuthenticationToken(
+                                        userDetails,
+                                        null,
+                                        userDetails.getAuthorities()
+                                );
 
-                }else{
-                    throw new InvalidOrExpiredTokenException("Invalid token type. Expected an access token.");
+                        authentication.setDetails(
+                                new WebAuthenticationDetailsSource().buildDetails(request)
+                        );
+
+                        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+                    }else{
+                        throw new InvalidOrExpiredTokenException("Invalid token type. Expected an access token.");
+                    }
                 }
             }
         }catch (Exception e){
