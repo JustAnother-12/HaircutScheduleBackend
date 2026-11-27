@@ -189,7 +189,10 @@ public class AuthServiceImpl implements AuthService {
         String hashedToken = tokenHasher.hashToken(refreshToken);
         Session session = sessionRepository
                 .findSessionByRefreshTokenHash(hashedToken)
-                .filter(s -> s.getRevokedAt() == null)
+                .filter(s ->
+                        s.getRevokedAt() == null
+                                && s.getExpiredAt().isAfter(clock.instant())
+                )
                 .orElseThrow(
                         () -> new ResourceNotFoundException("No active session found for the provided refresh token")
                 );

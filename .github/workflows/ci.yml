@@ -1,0 +1,54 @@
+
+name: Backend CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SPRING_PROFILES_ACTIVE: test
+      JWT_SECRET: ci-only-secret-2026
+      JWT_ACCESS_EXPIRATION_HOURS: "1"
+      JWT_REFRESH_EXPIRATION_DAYS: "1"
+      FRONTEND_URL: http://localhost:3000
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      # 2. Install Java 17 and cache Maven dependencies
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      # 3. Check Java and Docker availability
+      - name: Check environment
+        run: |
+          java -version
+          docker version
+
+      # 4. Make Maven Wrapper executable on Linux
+      - name: Grant permission to Maven Wrapper
+        run: chmod +x mvnw
+
+      # 5. Build project and run all tests
+      - name: Build and run tests
+        run: ./mvnw --batch-mode --no-transfer-progress clean verify
