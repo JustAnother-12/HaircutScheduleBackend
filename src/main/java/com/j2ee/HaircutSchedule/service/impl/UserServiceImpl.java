@@ -46,6 +46,14 @@ public class UserServiceImpl implements UserService {
             ArgumentValue<String> email,
             ArgumentValue<String> phone
     ) {
+        if (!ValidationUtils.isProvided(fullName)
+                && !ValidationUtils.isProvided(email)
+                && !ValidationUtils.isProvided(phone)) {
+            throw new IllegalArgumentException(
+                    "At least one field must be provided"
+            );
+        }
+
         User user = userRepository.findById(currentUser.getId())
                 .orElseThrow(() ->
                         new ResourceNotFoundException("User not found")
