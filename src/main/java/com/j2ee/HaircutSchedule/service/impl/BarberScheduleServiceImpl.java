@@ -312,7 +312,7 @@ public class BarberScheduleServiceImpl implements BarberScheduleService {
     }
 
     private User getBarberById(Integer id){
-        return userRepository.findById(id)
+        return userRepository.findByIdAndRole(id, UserRole.BARBER)
                 .orElseThrow(() -> new ResourceNotFoundException("Cannot find Barber with id: " + id));
     }
 
