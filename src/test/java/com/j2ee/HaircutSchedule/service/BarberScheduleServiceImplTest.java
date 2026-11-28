@@ -99,7 +99,7 @@ class BarberScheduleServiceImplTest {
     void createSchedule_validInput_success() {
         User barber = user(2, UserRole.BARBER);
 
-        when(userRepository.findById(2))
+        when(userRepository.findByIdAndRole(2, UserRole.BARBER))
                 .thenReturn(Optional.of(barber));
 
         when(scheduleRepository.saveAndFlush(
@@ -165,7 +165,7 @@ class BarberScheduleServiceImplTest {
         User admin = user(3, UserRole.ADMIN);
         User barber = user(2, UserRole.BARBER);
 
-        when(userRepository.findById(2))
+        when(userRepository.findByIdAndRole(2, UserRole.BARBER))
                 .thenReturn(Optional.of(barber));
 
         assertThatThrownBy(() ->
